@@ -115,7 +115,7 @@ class BybitDataFetcher(DataFetcherBase):
                 df.rename(columns={"fundingRateTimestamp": "fundingTime"}, inplace=True)
                 # 将fundingTime转换为datetime格式并向下取整到分钟
                 df["fundingTime"] = pd.to_datetime(df["fundingTime"].astype("int64"), unit="ms")
-                df["fundingTime"] = df["fundingTime"].dt.floor("T")
+                df["fundingTime"] = df["fundingTime"].dt.floor("min")
                 df["timestamp"] = df["fundingTime"]
                 df.set_index("timestamp", inplace=True)
                 df.sort_index(inplace=True)

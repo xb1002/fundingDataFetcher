@@ -104,7 +104,7 @@ class BinanceDataFetcher(DataFetcherBase):
             df = pd.DataFrame(data)
             # df["fundingTime"] 向下取整到分钟
             df["fundingTime"] = pd.to_datetime(df["fundingTime"], unit="ms")
-            df["fundingTime"] = df["fundingTime"].dt.floor("T")
+            df["fundingTime"] = df["fundingTime"].dt.floor("min")
             df["timestamp"] = df["fundingTime"]
             df.set_index("timestamp", inplace=True)
             return df
