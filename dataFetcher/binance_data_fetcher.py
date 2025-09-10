@@ -141,6 +141,22 @@ class BinanceDataFetcher(DataFetcherBase):
             df.set_index("timestamp", inplace=True)
             return df
         return pd.DataFrame()
+    
+    def fetch_all_symbol(self) -> list[str]:
+        """
+        获取所有交易对符号
+
+        Returns:
+            list[str]: 交易对符号列表
+        """
+        end_point = "/fapi/v1/exchangeInfo"
+        url = f"{self.base_url}{end_point}"
+        data = self.make_request(url)
+        symbols = []
+        if data and "symbols" in data:
+            symbols = [symbol["symbol"] for symbol in data["symbols"]]
+        symbols = [s for s in symbols if s.endswith("USDT")]
+        return symbols
 
 if __name__ == "__main__":
     max_limits = {
@@ -199,3 +215,6 @@ if __name__ == "__main__":
         data_type=DataType.PREMIUM_INDEX
     )
     print(premium_index_data)
+
+    # all_symbols = fetcher.fetch_all_symbol()
+    # print(all_symbols)

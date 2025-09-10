@@ -156,6 +156,27 @@ class BybitDataFetcher(DataFetcherBase):
                 df.set_index("timestamp", inplace=True)
                 return df
         return pd.DataFrame()
+    
+    def fetch_all_symbol(self) -> list[str]:
+        """
+        获取所有交易对符号
+
+        Returns:
+            list[str]: 交易对符号列表
+        """
+        end_point = "/v5/market/instruments-info"
+        url = f"{self.base_url}{end_point}"
+        params = {
+            "category": "linear"
+        }
+        response = self.make_request(url, params=params)
+        symbols = []
+        if response and response["retMsg"] == "OK":
+            if response["result"]["list"]:
+                data = response["result"]["list"]
+                symbols = [item["symbol"] for item in data]
+                symbols = [s for s in symbols if s.endswith("USDT")]
+        return symbols
 
 if __name__ == "__main__":
     max_limits = {
@@ -178,6 +199,9 @@ if __name__ == "__main__":
     start_date = "2025-08-01"
     end_date = "2025-08-17"
     interval = "1m"
+
+    # all_symbols = fetcher.fetch_all_symbol()
+    # print(all_symbols)
 
     price_index_data = fetcher.fetch_data(
         symbol=symbol,
