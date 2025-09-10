@@ -253,7 +253,7 @@ class DataFetcherBase(ABC):
         pass
 
     def fetch_data(self, symbol: str, start_date: str,
-                   end_date: str, interval: str, data_type: DataType) -> pd.DataFrame:
+                   end_date: str, interval: str, data_type: DataType) -> tuple[pd.DataFrame, bool]:
         """
         通过多线程调用_fetch_price_index_data获取指定时间范围的数据
 
@@ -266,6 +266,7 @@ class DataFetcherBase(ABC):
         Returns:
             pd.DataFrame: 价格指数数据
         """
+        from_cache = False
         # 如果数据已经存在，则不再获取
         exchange_name = self.get_exchange_name()
         if data_type != DataType.FUNDING_RATE:
@@ -275,8 +276,9 @@ class DataFetcherBase(ABC):
         file_path = os.path.join(self.output_dir, exchange_name, data_type.value, filename)
         if os.path.exists(file_path):
             logger.info(f"数据文件已存在，跳过获取: {file_path}")
-            return pd.read_csv(file_path)
-        
+            from_cache = True
+            return pd.read_csv(file_path), from_cache
+
         # 如果是获取资费，则将interval_ms设置为1小时的
         if data_type == DataType.FUNDING_RATE:
             interval_ms = self.get_interval_milliseconds("1h")
@@ -315,7 +317,7 @@ class DataFetcherBase(ABC):
                     logger.error(f"获取价格指数数据失败: {e}")
 
         if not results:
-            return pd.DataFrame()
+            return pd.DataFrame(), from_cache
 
         # 合并所有结果
         res = pd.concat(results, ignore_index=True)
@@ -324,7 +326,7 @@ class DataFetcherBase(ABC):
         res = res.sort_index()
         # 保存
         self.save_data(res, data_type, symbol, start_date, end_date, interval)
-        return res
+        return res, from_cache
 
     # 获取价格
     @abstractmethod

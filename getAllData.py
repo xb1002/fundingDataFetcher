@@ -117,7 +117,7 @@ def fetch_all_data_for_symbols(symbols, start_date, end_date, interval="1m"):
             # Binance数据
             try:
                 logger.info(f"  获取Binance {data_type.value}数据...")
-                binance_data = binance_fetcher.fetch_data(
+                binance_data, from_cache = binance_fetcher.fetch_data(
                     symbol=symbol,
                     start_date=start_date,
                     end_date=end_date,
@@ -126,11 +126,12 @@ def fetch_all_data_for_symbols(symbols, start_date, end_date, interval="1m"):
                 )
                 completed_tasks += 1
                 logger.info(f"  ✓ Binance {data_type.value}数据获取完成 ({completed_tasks}/{total_tasks})")
-                
-                # 添加随机等待时间0.5-1
-                wait_time = random.uniform(1, 3)
-                logger.info(f"  等待 {wait_time:.1f} 秒...")
-                time.sleep(wait_time)
+
+                # 添加随机等待时间1-3秒, 如果是从缓存读取则不等待
+                if not from_cache:
+                    wait_time = random.uniform(1, 3)
+                    logger.info(f"  等待 {wait_time:.1f} 秒...")
+                    time.sleep(wait_time)
                 
             except Exception as e:
                 logger.error(f"  ✗ Binance {symbol} {data_type.value}数据获取失败: {e}")
@@ -139,7 +140,7 @@ def fetch_all_data_for_symbols(symbols, start_date, end_date, interval="1m"):
             # Bybit数据
             try:
                 logger.info(f"  获取Bybit {data_type.value}数据...")
-                bybit_data = bybit_fetcher.fetch_data(
+                bybit_data, from_cache = bybit_fetcher.fetch_data(
                     symbol=symbol,
                     start_date=start_date,
                     end_date=end_date,
@@ -150,9 +151,10 @@ def fetch_all_data_for_symbols(symbols, start_date, end_date, interval="1m"):
                 logger.info(f"  ✓ Bybit {data_type.value}数据获取完成 ({completed_tasks}/{total_tasks})")
                 
                 # 添加随机等待时间
-                wait_time = random.uniform(1, 3)
-                logger.info(f"  等待 {wait_time:.1f} 秒...")
-                time.sleep(wait_time)
+                if not from_cache:
+                    wait_time = random.uniform(1, 3)
+                    logger.info(f"  等待 {wait_time:.1f} 秒...")
+                    time.sleep(wait_time)
                 
             except Exception as e:
                 logger.error(f"  ✗ Bybit {symbol} {data_type.value}数据获取失败: {e}")
