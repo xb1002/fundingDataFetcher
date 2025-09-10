@@ -121,12 +121,48 @@ class BybitDataFetcher(DataFetcherBase):
                 df.sort_index(inplace=True)
                 return df
         return pd.DataFrame()
+    
+    def _fetch_premium_index_data(self, symbol: str, start_timestamp: int, end_timestamp: int, interval: str) -> pd.DataFrame:
+        """
+        获取永续合约溢价指数数据
+
+        Args:
+            symbol: 交易对符号
+            start_timestamp: 开始时间戳
+            end_timestamp: 结束时间戳
+            interval: 时间间隔
+
+        Returns:
+            pd.DataFrame: 溢价指数数据
+        """
+        end_point = "/v5/market/premium-index-price-kline"
+        url = f"{self.base_url}{end_point}"
+        interval = interval.rstrip("m")  # 确保时间间隔格式正确
+        params = {
+            "symbol": symbol,
+            "interval": interval,
+            "start": start_timestamp,
+            "end": end_timestamp,
+            "limit": self.max_limits[DataType.PREMIUM_INDEX]
+
+        }
+        columns = ["open_time", "open", "high", "low", "close"]
+        response = self.make_request(url, params=params)
+        if response and response["retMsg"] == "OK":
+            if response["result"]["list"]:
+                data = response["result"]["list"]
+                df = pd.DataFrame(data, columns=columns)
+                df["timestamp"] = pd.to_datetime(df["open_time"].astype("int64"), unit="ms")
+                df.set_index("timestamp", inplace=True)
+                return df
+        return pd.DataFrame()
 
 if __name__ == "__main__":
     max_limits = {
         DataType.PRICE_INDEX: 1000,
         DataType.PRICE: 1000,
-        DataType.FUNDING_RATE: 200
+        DataType.FUNDING_RATE: 200,
+        DataType.PREMIUM_INDEX: 1000
     }
     fetcher = BybitDataFetcher(
         base_url="https://api.bybit.com",
@@ -169,3 +205,12 @@ if __name__ == "__main__":
         data_type=DataType.FUNDING_RATE
     )
     print(funding_rate_data)
+
+    premium_index_data = fetcher.fetch_data(
+        symbol=symbol,
+        start_date=start_date,
+        end_date=end_date,
+        interval=interval,
+        data_type=DataType.PREMIUM_INDEX
+    )
+    print(premium_index_data)

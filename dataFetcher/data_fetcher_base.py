@@ -19,6 +19,7 @@ class DataType(Enum):
     PRICE_INDEX = "price_index"
     PRICE = "price"
     FUNDING_RATE = "funding_rate"
+    PREMIUM_INDEX = "premium_index"
 
 class DataFetcherBase(ABC):
     """
@@ -54,7 +55,8 @@ class DataFetcherBase(ABC):
         directories = [
             f"{self.output_dir}/{exchange_name}/price_index",
             f"{self.output_dir}/{exchange_name}/price", 
-            f"{self.output_dir}/{exchange_name}/funding_rate"
+            f"{self.output_dir}/{exchange_name}/funding_rate",
+            f"{self.output_dir}/{exchange_name}/premium_index"
         ]
         
         for directory in directories:
@@ -283,6 +285,8 @@ class DataFetcherBase(ABC):
             exec_func = self._fetch_price_data
         elif data_type == DataType.FUNDING_RATE:
             exec_func = self._fetch_funding_rate_data
+        elif data_type == DataType.PREMIUM_INDEX:
+            exec_func = self._fetch_premium_index_data
         else:
             raise ValueError(f"不支持的数据类型: {data_type}")
 
@@ -343,5 +347,21 @@ class DataFetcherBase(ABC):
             
         Returns:
             pd.DataFrame: 资金费率数据
+        """
+        pass
+
+    @abstractmethod
+    def _fetch_premium_index_data(self, symbol: str, start_timestamp: int, 
+                                 end_timestamp: int, interval: str) -> pd.DataFrame:
+        """
+        获取溢价指数数据
+        
+        Args:
+            symbol: 交易对符号
+            start_timestamp: 开始时间戳
+            end_timestamp: 结束时间戳
+            
+        Returns:
+            pd.DataFrame: 溢价指数数据
         """
         pass
