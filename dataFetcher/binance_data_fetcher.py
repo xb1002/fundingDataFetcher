@@ -1,4 +1,4 @@
-from dataFetcher.data_fetcher_base import DataFetcherBase, DataType
+from data_fetcher_base import DataFetcherBase, DataType
 import pandas as pd
 from datetime import datetime
 import logging
