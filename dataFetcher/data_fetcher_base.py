@@ -186,7 +186,7 @@ class DataFetcherBase(ABC):
         exchange_name = self.get_exchange_name()
         
         # 构建文件名
-        if data_type in [DataType.PRICE_INDEX, DataType.PRICE] and interval:
+        if data_type != DataType.FUNDING_RATE:
             filename = f"{symbol}_{start}_{end}_{interval}.csv"
         else:
             filename = f"{symbol}_{start}_{end}.csv"
@@ -266,6 +266,17 @@ class DataFetcherBase(ABC):
         Returns:
             pd.DataFrame: 价格指数数据
         """
+        # 如果数据已经存在，则不再获取
+        exchange_name = self.get_exchange_name()
+        if data_type != DataType.FUNDING_RATE:
+            filename = f"{symbol}_{start_date}_{end_date}_{interval}.csv"
+        else:
+            filename = f"{symbol}_{start_date}_{end_date}.csv"
+        file_path = os.path.join(self.output_dir, exchange_name, data_type.value, filename)
+        if os.path.exists(file_path):
+            logger.info(f"数据文件已存在，跳过获取: {file_path}")
+            return pd.read_csv(file_path)
+        
         # 如果是获取资费，则将interval_ms设置为1小时的
         if data_type == DataType.FUNDING_RATE:
             interval_ms = self.get_interval_milliseconds("1h")
