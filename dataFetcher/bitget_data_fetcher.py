@@ -31,6 +31,7 @@ class BitgetDataFetcher(DataFetcherBase):
     def __init__(self, *args, product_type: str = "umcbl", **kwargs):
         super().__init__(*args, **kwargs)
         self.product_type = product_type
+        self._symbol_map: dict[str, str] = {}
 
     def get_exchange_name(self) -> str:
         return "bitget"
@@ -158,7 +159,48 @@ class BitgetDataFetcher(DataFetcherBase):
                 return df
         return pd.DataFrame()
 
+    def _to_canonical_symbol(self, symbol: str) -> str:
+        if "_" in symbol:
+            return symbol.split("_")[0]
+        return symbol
+
+    def canonicalize_symbol(self, symbol: str) -> str:
+        self._ensure_symbol_map()
+        if symbol in self._symbol_map:
+            return symbol
+        if symbol in self._symbol_map.values():
+            return self._to_canonical_symbol(symbol)
+        candidate = symbol.replace("_", "")
+        if candidate in self._symbol_map:
+            return candidate
+        if "_" in symbol:
+            candidate = self._to_canonical_symbol(symbol)
+            if candidate in self._symbol_map:
+                return candidate
+        return symbol
+
+    def translate_symbol(self, symbol: str) -> str:
+        self._ensure_symbol_map()
+        if symbol in self._symbol_map.values():
+            return symbol
+        if symbol in self._symbol_map:
+            return self._symbol_map[symbol]
+        candidate = symbol.replace("_", "")
+        if candidate in self._symbol_map:
+            return self._symbol_map[candidate]
+        if "_" in symbol:
+            candidate = self._to_canonical_symbol(symbol)
+            if candidate in self._symbol_map:
+                return self._symbol_map[candidate]
+        return symbol
+
+    def _ensure_symbol_map(self) -> None:
+        if not self._symbol_map:
+            self.fetch_all_symbol()
+
     def fetch_all_symbol(self) -> list[str]:
+        if self._symbol_map:
+            return sorted(self._symbol_map.keys())
         end_point = "/api/mix/v1/market/contracts"
         url = f"{self.base_url}{end_point}"
         params = {"productType": self.product_type}
@@ -167,5 +209,12 @@ class BitgetDataFetcher(DataFetcherBase):
         if response and response.get("msg") == "success":
             data = response.get("data", [])
             if data:
-                symbols = [item["symbol"] for item in data]
+                self._symbol_map = {}
+                for item in data:
+                    raw_symbol = item.get("symbol", "")
+                    if not raw_symbol:
+                        continue
+                    canonical = self._to_canonical_symbol(raw_symbol)
+                    self._symbol_map[canonical] = raw_symbol
+                symbols = sorted(self._symbol_map.keys())
         return symbols

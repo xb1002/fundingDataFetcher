@@ -28,6 +28,10 @@ class OKXDataFetcher(DataFetcherBase):
         "1M": "1M",
     }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._symbol_map: dict[str, str] = {}
+
     def get_exchange_name(self) -> str:
         return "okx"
 
@@ -180,7 +184,41 @@ class OKXDataFetcher(DataFetcherBase):
                 return df
         return pd.DataFrame()
 
+    def _to_canonical_symbol(self, inst_id: str) -> str:
+        parts = inst_id.split("-")
+        if len(parts) >= 2:
+            return f"{parts[0]}{parts[1]}"
+        return inst_id.replace("-", "")
+
+    def canonicalize_symbol(self, symbol: str) -> str:
+        self._ensure_symbol_map()
+        if symbol in self._symbol_map:
+            return symbol
+        if symbol in self._symbol_map.values():
+            return self._to_canonical_symbol(symbol)
+        candidate = symbol.replace("-", "")
+        if candidate in self._symbol_map:
+            return candidate
+        return symbol
+
+    def translate_symbol(self, symbol: str) -> str:
+        self._ensure_symbol_map()
+        if symbol in self._symbol_map.values():
+            return symbol
+        if symbol in self._symbol_map:
+            return self._symbol_map[symbol]
+        candidate = symbol.replace("-", "")
+        if candidate in self._symbol_map:
+            return self._symbol_map[candidate]
+        return symbol
+
+    def _ensure_symbol_map(self) -> None:
+        if not self._symbol_map:
+            self.fetch_all_symbol()
+
     def fetch_all_symbol(self) -> list[str]:
+        if self._symbol_map:
+            return sorted(self._symbol_map.keys())
         end_point = "/api/v5/public/instruments"
         url = f"{self.base_url}{end_point}"
         params = {"instType": "SWAP"}
@@ -189,5 +227,12 @@ class OKXDataFetcher(DataFetcherBase):
         if response and response.get("code") == "0":
             data = response.get("data", [])
             if data:
-                symbols = [item["instId"] for item in data]
+                self._symbol_map = {}
+                for item in data:
+                    inst_id = item.get("instId", "")
+                    if not inst_id:
+                        continue
+                    canonical = self._to_canonical_symbol(inst_id)
+                    self._symbol_map[canonical] = inst_id
+                symbols = sorted(self._symbol_map.keys())
         return symbols

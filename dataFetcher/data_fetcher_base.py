@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 import os
 import time
@@ -167,6 +169,22 @@ class DataFetcherBase(ABC):
                 logger.error(f"JSON解析失败: {e}")
                 return None
 
+    def canonicalize_symbol(self, symbol: str) -> str:
+        """将交易所特有的交易对格式转换为通用格式。
+
+        默认返回原始值，子类可根据需要进行覆盖。
+        """
+
+        return symbol
+
+    def translate_symbol(self, symbol: str) -> str:
+        """将通用交易对格式转换为交易所实际使用的符号。
+
+        默认返回原始值，子类可根据需要进行覆盖。
+        """
+
+        return symbol
+
     def save_data(self, data: pd.DataFrame, data_type: DataType, symbol: str, start: str,
                  end: str, interval: Optional[str] = None) -> str:
         """
@@ -184,7 +202,7 @@ class DataFetcherBase(ABC):
             str: 保存的文件路径
         """
         exchange_name = self.get_exchange_name()
-        
+
         # 构建文件名
         if data_type != DataType.FUNDING_RATE:
             filename = f"{symbol}_{start}_{end}_{interval}.csv"
@@ -194,8 +212,13 @@ class DataFetcherBase(ABC):
         # 构建文件路径
         file_path = os.path.join(self.output_dir, exchange_name, data_type.value, filename)
 
-        # 保存数据
-        data.to_csv(file_path, index=False)
+        data_to_save = data.copy()
+        if "timestamp" not in data_to_save.columns:
+            data_to_save = data_to_save.reset_index()
+        if "timestamp" in data_to_save.columns:
+            data_to_save["timestamp"] = pd.to_datetime(data_to_save["timestamp"])
+
+        data_to_save.to_csv(file_path, index=False)
         logger.info(f"数据已保存: {file_path}")
         
         return file_path
@@ -267,17 +290,23 @@ class DataFetcherBase(ABC):
             pd.DataFrame: 价格指数数据
         """
         from_cache = False
+        canonical_symbol = self.canonicalize_symbol(symbol)
         # 如果数据已经存在，则不再获取
         exchange_name = self.get_exchange_name()
         if data_type != DataType.FUNDING_RATE:
-            filename = f"{symbol}_{start_date}_{end_date}_{interval}.csv"
+            filename = f"{canonical_symbol}_{start_date}_{end_date}_{interval}.csv"
         else:
-            filename = f"{symbol}_{start_date}_{end_date}.csv"
+            filename = f"{canonical_symbol}_{start_date}_{end_date}.csv"
         file_path = os.path.join(self.output_dir, exchange_name, data_type.value, filename)
         if os.path.exists(file_path):
             logger.info(f"数据文件已存在，跳过获取: {file_path}")
             from_cache = True
-            return pd.read_csv(file_path), from_cache
+            cached = pd.read_csv(file_path)
+            if "timestamp" in cached.columns:
+                cached["timestamp"] = pd.to_datetime(cached["timestamp"])
+                cached.set_index("timestamp", inplace=True)
+                cached.sort_index(inplace=True)
+            return cached, from_cache
 
         # 如果是获取资费，则将interval_ms设置为1小时的
         if data_type == DataType.FUNDING_RATE:
@@ -303,10 +332,12 @@ class DataFetcherBase(ABC):
         else:
             raise ValueError(f"不支持的数据类型: {data_type}")
 
+        api_symbol = self.translate_symbol(symbol)
+
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             futures = []
             for start, end in time_ranges:
-                futures.append(executor.submit(exec_func, symbol, start, end, interval))
+                futures.append(executor.submit(exec_func, api_symbol, start, end, interval))
 
             results = []
             for future in as_completed(futures):
@@ -320,12 +351,13 @@ class DataFetcherBase(ABC):
             return pd.DataFrame(), from_cache
 
         # 合并所有结果
-        res = pd.concat(results, ignore_index=True)
+        res = pd.concat(results)
         # 去重
-        res = res.drop_duplicates()
+        if not res.index.is_unique:
+            res = res[~res.index.duplicated(keep="last")]
         res = res.sort_index()
         # 保存
-        self.save_data(res, data_type, symbol, start_date, end_date, interval)
+        self.save_data(res, data_type, canonical_symbol, start_date, end_date, interval)
         return res, from_cache
 
     # 获取价格
