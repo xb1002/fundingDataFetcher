@@ -18,6 +18,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from dataFetcher.binance_data_fetcher import BinanceDataFetcher
 from dataFetcher.bybit_data_fetcher import BybitDataFetcher
+from dataFetcher.okx_data_fetcher import OKXDataFetcher
+from dataFetcher.bitget_data_fetcher import BitgetDataFetcher
 from dataFetcher.data_fetcher_base import DataType
 
 # 配置日志
@@ -52,48 +54,72 @@ class SingleSymbolDataFetcher:
         """初始化各交易所的数据获取器"""
         fetchers = {}
         
-        # Binance配置
-        binance_max_limits = {
-            DataType.PRICE_INDEX: 1500,
-            DataType.PRICE: 1500,
-            DataType.FUNDING_RATE: 1000,
-            DataType.PREMIUM_INDEX: 1500
+        exchange_configs = {
+            'binance': {
+                'class': BinanceDataFetcher,
+                'kwargs': {
+                    'base_url': "https://fapi.binance.com",
+                    'max_limits': {
+                        DataType.PRICE_INDEX: 1500,
+                        DataType.PRICE: 1500,
+                        DataType.FUNDING_RATE: 1000,
+                        DataType.PREMIUM_INDEX: 1500,
+                    },
+                },
+            },
+            'bybit': {
+                'class': BybitDataFetcher,
+                'kwargs': {
+                    'base_url': "https://api.bybit.com",
+                    'max_limits': {
+                        DataType.PRICE_INDEX: 1000,
+                        DataType.PRICE: 1000,
+                        DataType.FUNDING_RATE: 200,
+                        DataType.PREMIUM_INDEX: 1000,
+                    },
+                },
+            },
+            'okx': {
+                'class': OKXDataFetcher,
+                'kwargs': {
+                    'base_url': "https://www.okx.com",
+                    'max_limits': {
+                        DataType.PRICE_INDEX: 100,
+                        DataType.PRICE: 100,
+                        DataType.FUNDING_RATE: 100,
+                        DataType.PREMIUM_INDEX: 100,
+                    },
+                },
+            },
+            'bitget': {
+                'class': BitgetDataFetcher,
+                'kwargs': {
+                    'base_url': "https://api.bitget.com",
+                    'max_limits': {
+                        DataType.PRICE_INDEX: 100,
+                        DataType.PRICE: 100,
+                        DataType.FUNDING_RATE: 100,
+                        DataType.PREMIUM_INDEX: 100,
+                    },
+                },
+            },
         }
-        
-        # Bybit配置
-        bybit_max_limits = {
-            DataType.PRICE_INDEX: 1000,
-            DataType.PRICE: 1000,
-            DataType.FUNDING_RATE: 200,
-            DataType.PREMIUM_INDEX: 1000
-        }
-        
-        try:
-            fetchers['binance'] = BinanceDataFetcher(
-                base_url="https://fapi.binance.com",
-                max_limits=binance_max_limits,
-                output_dir=self.output_dir,
-                max_retries=3,
-                timeout=30,
-                max_workers=self.max_workers
-            )
-            logger.info("Binance数据获取器初始化成功")
-        except Exception as e:
-            logger.error(f"Binance数据获取器初始化失败: {e}")
-            
-        try:
-            fetchers['bybit'] = BybitDataFetcher(
-                base_url="https://api.bybit.com",
-                max_limits=bybit_max_limits,
-                output_dir=self.output_dir,
-                max_retries=3,
-                timeout=30,
-                max_workers=self.max_workers
-            )
-            logger.info("Bybit数据获取器初始化成功")
-        except Exception as e:
-            logger.error(f"Bybit数据获取器初始化失败: {e}")
-            
+
+        for name, config in exchange_configs.items():
+            fetcher_cls = config['class']
+            kwargs = config['kwargs']
+            try:
+                fetchers[name] = fetcher_cls(
+                    output_dir=self.output_dir,
+                    max_retries=3,
+                    timeout=30,
+                    max_workers=self.max_workers,
+                    **kwargs,
+                )
+                logger.info(f"{name.capitalize()}数据获取器初始化成功")
+            except Exception as e:
+                logger.error(f"{name.capitalize()}数据获取器初始化失败: {e}")
+
         return fetchers
     
     def get_available_exchanges(self) -> List[str]:
