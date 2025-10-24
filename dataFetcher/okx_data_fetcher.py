@@ -45,6 +45,7 @@ class OKXDataFetcher(DataFetcherBase):
         df = pd.DataFrame(data, columns=columns)
         df["timestamp"] = pd.to_datetime(df[columns[0]].astype("int64"), unit="ms")
         df.set_index("timestamp", inplace=True)
+        df.sort_index(inplace=True)
         return df
 
     def _fetch_price_index_data(
@@ -54,14 +55,14 @@ class OKXDataFetcher(DataFetcherBase):
         end_timestamp: int,
         interval: str,
     ) -> pd.DataFrame:
-        end_point = "/api/v5/market/index-candles"
+        end_point = "/api/v5/market/history-index-candles"
         url = f"{self.base_url}{end_point}"
         params = {
             "instId": symbol,
             "bar": self._convert_interval(interval),
-            "after": start_timestamp,
-            "before": end_timestamp,
-            "limit": self.max_limits[DataType.PRICE_INDEX],
+            "after": str(start_timestamp),
+            "before": str(end_timestamp),
+            "limit": str(self.max_limits[DataType.PRICE_INDEX]),
         }
         response = self.make_request(url, params=params)
         if response and response.get("code") == "0":
@@ -79,7 +80,9 @@ class OKXDataFetcher(DataFetcherBase):
                     "confirm",
                 ]
                 df = self._normalise_candles(data, columns)
-                return df
+                start_dt = pd.to_datetime(start_timestamp, unit="ms")
+                end_dt = pd.to_datetime(end_timestamp, unit="ms")
+                return df.loc[(df.index >= start_dt) & (df.index <= end_dt)]
         return pd.DataFrame()
 
     def _fetch_price_data(
@@ -89,14 +92,14 @@ class OKXDataFetcher(DataFetcherBase):
         end_timestamp: int,
         interval: str,
     ) -> pd.DataFrame:
-        end_point = "/api/v5/market/candles"
+        end_point = "/api/v5/market/history-candles"
         url = f"{self.base_url}{end_point}"
         params = {
             "instId": symbol,
             "bar": self._convert_interval(interval),
-            "after": start_timestamp,
-            "before": end_timestamp,
-            "limit": self.max_limits[DataType.PRICE],
+            "after": str(start_timestamp),
+            "before": str(end_timestamp),
+            "limit": str(self.max_limits[DataType.PRICE]),
         }
         response = self.make_request(url, params=params)
         if response and response.get("code") == "0":
@@ -114,7 +117,9 @@ class OKXDataFetcher(DataFetcherBase):
                     "confirm",
                 ]
                 df = self._normalise_candles(data, columns)
-                return df
+                start_dt = pd.to_datetime(start_timestamp, unit="ms")
+                end_dt = pd.to_datetime(end_timestamp, unit="ms")
+                return df.loc[(df.index >= start_dt) & (df.index <= end_dt)]
         return pd.DataFrame()
 
     def _fetch_funding_rate_data(
@@ -128,9 +133,9 @@ class OKXDataFetcher(DataFetcherBase):
         url = f"{self.base_url}{end_point}"
         params = {
             "instId": symbol,
-            "after": start_timestamp,
-            "before": end_timestamp,
-            "limit": self.max_limits[DataType.FUNDING_RATE],
+            "after": str(start_timestamp),
+            "before": str(end_timestamp),
+            "limit": str(self.max_limits[DataType.FUNDING_RATE]),
         }
         response = self.make_request(url, params=params)
         if response and response.get("code") == "0":
@@ -146,7 +151,9 @@ class OKXDataFetcher(DataFetcherBase):
                 df["timestamp"] = df["fundingTime"]
                 df.set_index("timestamp", inplace=True)
                 df.sort_index(inplace=True)
-                return df
+                start_dt = pd.to_datetime(start_timestamp, unit="ms")
+                end_dt = pd.to_datetime(end_timestamp, unit="ms")
+                return df.loc[(df.index >= start_dt) & (df.index <= end_dt)]
         return pd.DataFrame()
 
     def _fetch_premium_index_data(
@@ -156,14 +163,14 @@ class OKXDataFetcher(DataFetcherBase):
         end_timestamp: int,
         interval: str,
     ) -> pd.DataFrame:
-        end_point = "/api/v5/market/mark-price-candles"
+        end_point = "/api/v5/market/history-mark-price-candles"
         url = f"{self.base_url}{end_point}"
         params = {
             "instId": symbol,
             "bar": self._convert_interval(interval),
-            "after": start_timestamp,
-            "before": end_timestamp,
-            "limit": self.max_limits[DataType.PREMIUM_INDEX],
+            "after": str(start_timestamp),
+            "before": str(end_timestamp),
+            "limit": str(self.max_limits[DataType.PREMIUM_INDEX]),
         }
         response = self.make_request(url, params=params)
         if response and response.get("code") == "0":
@@ -181,7 +188,9 @@ class OKXDataFetcher(DataFetcherBase):
                     "confirm",
                 ]
                 df = self._normalise_candles(data, columns)
-                return df
+                start_dt = pd.to_datetime(start_timestamp, unit="ms")
+                end_dt = pd.to_datetime(end_timestamp, unit="ms")
+                return df.loc[(df.index >= start_dt) & (df.index <= end_dt)]
         return pd.DataFrame()
 
     def _to_canonical_symbol(self, inst_id: str) -> str:

@@ -46,6 +46,7 @@ class BitgetDataFetcher(DataFetcherBase):
         df = pd.DataFrame(data, columns=columns)
         df["timestamp"] = pd.to_datetime(df[columns[0]].astype("int64"), unit="ms")
         df.set_index("timestamp", inplace=True)
+        df.sort_index(inplace=True)
         return df
 
     def _fetch_price_index_data(
@@ -89,7 +90,9 @@ class BitgetDataFetcher(DataFetcherBase):
                     "quote_volume",
                 ]
                 df = self._normalise_candles(data, columns)
-                return df
+                start_dt = pd.to_datetime(start_timestamp, unit="ms")
+                end_dt = pd.to_datetime(end_timestamp, unit="ms")
+                return df.loc[(df.index >= start_dt) & (df.index <= end_dt)]
         return pd.DataFrame()
 
     def _fetch_funding_rate_data(
@@ -104,7 +107,10 @@ class BitgetDataFetcher(DataFetcherBase):
         params = {
             "symbol": symbol,
             "productType": self.product_type,
-            "pageSize": self.max_limits[DataType.FUNDING_RATE],
+            "pageSize": str(self.max_limits[DataType.FUNDING_RATE]),
+            "pageNo": "1",
+            "startTime": str(start_timestamp),
+            "endTime": str(end_timestamp),
         }
         response = self.make_request(url, params=params)
         if response and response.get("msg") == "success":
@@ -156,7 +162,9 @@ class BitgetDataFetcher(DataFetcherBase):
                     "quote_volume",
                 ]
                 df = self._normalise_candles(data, columns)
-                return df
+                start_dt = pd.to_datetime(start_timestamp, unit="ms")
+                end_dt = pd.to_datetime(end_timestamp, unit="ms")
+                return df.loc[(df.index >= start_dt) & (df.index <= end_dt)]
         return pd.DataFrame()
 
     def _to_canonical_symbol(self, symbol: str) -> str:

@@ -113,7 +113,7 @@ class DataFetcherBase(ABC):
         time_ranges = []
         current_start = start_timestamp
         
-        while current_start < end_timestamp:
+        while current_start <= end_timestamp:
             # 计算当前批次的结束时间
             current_end = min(
                 current_start + (max_limit - 1) * interval_ms,
