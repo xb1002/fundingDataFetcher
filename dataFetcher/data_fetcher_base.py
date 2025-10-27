@@ -253,7 +253,7 @@ class DataFetcherBase(ABC):
         pass
 
     def fetch_data(self, symbol: str, start_date: str,
-                   end_date: str, interval: str, data_type: DataType) -> tuple[pd.DataFrame, bool]:
+                   end_date: str, interval: str, data_type: DataType, allow_from_cache: bool = False) -> tuple[pd.DataFrame, bool]:
         """
         通过多线程调用_fetch_price_index_data获取指定时间范围的数据
 
@@ -274,7 +274,7 @@ class DataFetcherBase(ABC):
         else:
             filename = f"{symbol}_{start_date}_{end_date}.csv"
         file_path = os.path.join(self.output_dir, exchange_name, data_type.value, filename)
-        if os.path.exists(file_path):
+        if os.path.exists(file_path) and allow_from_cache:
             logger.info(f"数据文件已存在，跳过获取: {file_path}")
             from_cache = True
             return pd.read_csv(file_path), from_cache
